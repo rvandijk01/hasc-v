@@ -1,19 +1,23 @@
-module HASCVTypes where
+module HASCVTypes
+    -- | Algebraic datatype definitions and their "constructors"
+    -- Meant to accomodate the RISC-V spec rather than comply with it
+    -- for example, types in Haskell cannot represent 20-bit immediate values for AUIPC etc
+
+    -- However, restrictions are enforced using the type system when possible
+where
 
 import Data.Word
 import Data.Bits
 
--- Register stuff
-type Register = Word32
-type RegIdx = Int
+-- | Type synonyms to increase clarity in function definitions
+type Register = Word32      -- ^ 
+type RegIdx = Int           -- ^ 
 type Imm = Word32
-
--- Very simple definition for now
+type Prog = [Instr]
+-- Type synonyms below might be oversimplified, but sufficient for now
 type Memory = [Word32]
 
--- https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lui
--- this is meant to accomodate the RISC-V spec rather than comply with it
--- for example, types in Haskell cannot represent 20-bit immediate values for AUIPC etc.
+-- | https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lui
 data Instr =    Lui RegIdx Imm
             |   Auipc RegIdx Imm
             |   Addi  RegIdx RegIdx Imm
@@ -54,5 +58,5 @@ initCPU :: Int      -- ^ Local memory size per hart
         -> CPU      -- ^ The resulting CPU structure
 initCPU lMemSize shMemSize progs = CPU { 
     harts = initHart lMemSize <$> progs,
-    sharedMem = replicate shMemSize zeroBits 
+    sharedMem = replicate shMemSize zeroBits
     }
