@@ -6,8 +6,9 @@ module HASCVTypes
     -- However, restrictions are enforced using the type system when possible
 where
 
-import Data.Word
-import Data.Bits
+import Data.Word (Word32)
+import Data.Bits (zeroBits)
+import qualified Data.IntMap.Strict as IM
 
 -- | Type synonyms to increase clarity in function definitions
 type Register = Word32      -- ^ 
@@ -18,24 +19,29 @@ type Prog = [Instr]
 type Memory = [Word32]
 
 -- | https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lui
-data Instr =    Lui RegIdx Imm
-            |   Auipc RegIdx Imm
-            |   Addi  RegIdx RegIdx Imm
+data Instr =    Nop
+            |   Lui     RegIdx Imm          -- ^ x[rd] = sext(imm << 12)
+            |   Auipc   RegIdx Imm          -- ^ x[rd] = pc + sext(imm << 12)
+            |   Addi    RegIdx RegIdx Imm   -- ^ x[rd] = x[rs1] + sext(imm)
+            |   Slti    RegIdx RegIdx Imm   -- ^ 
+            |   Sltiu   RegIdx RegIdx Imm
+            |   Xori    RegIdx RegIdx Imm
+            |   Ori     RegIdx RegIdx Imm
             deriving Show
             -- insert more instructions here
 
 -- | Hardware thread (hart) with local memory
 data Hart = Hart { 
-    regFile :: [Register],
-    pc :: Register,
-    localMem :: Memory,
-    instrMem :: [Instr]
+    regFile     :: IM.IntMap Register,
+    pc          :: Register,
+    localMem    :: Memory,
+    instrMem    :: [Instr]
     } deriving Show
 
 -- | CPU with 1 or more harts and shared memory
 data CPU = CPU { 
-    harts :: [Hart],
-    sharedMem :: Memory
+    harts       :: [Hart],
+    sharedMem   :: Memory
     } deriving Show
 
 
@@ -45,7 +51,7 @@ initHart :: Int     -- ^ Local memory size for this hart
          -> [Instr] -- ^ The instruction memory of this hart
          -> Hart    -- ^ The resulting hart structure
 initHart lMemSize prog = Hart { 
-    regFile = replicate 32 zeroBits,
+    regFile = IM.fromList [(idx, zeroBits :: Word32) | idx <- [0..31]],
     pc = zeroBits,
     localMem = replicate lMemSize zeroBits,
     instrMem = prog
@@ -54,7 +60,7 @@ initHart lMemSize prog = Hart {
 -- | Initializes and configures a new CPU (1 or more harts with shared memory)
 initCPU :: Int      -- ^ Local memory size per hart
         -> Int      -- ^ Shared memory size
-        -> [[Instr]]-- ^ For each given program, a hart will be created to run that program locally
+        -> [Prog]-- ^ For each given program, a hart will be created to run that program locally
         -> CPU      -- ^ The resulting CPU structure
 initCPU lMemSize shMemSize progs = CPU { 
     harts = initHart lMemSize <$> progs,
