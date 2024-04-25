@@ -11,28 +11,43 @@ import Data.Bits (zeroBits)
 import qualified Data.IntMap.Strict as IM
 
 -- | Type synonyms to increase clarity in function definitions
-type Register = Word32      -- ^ 
+type Register = Word32      -- ^
+type RegFile = IM.IntMap Register
 type RegIdx = Int           -- ^ 
 type Imm = Word32
 type Prog = [Instr]
 -- Type synonyms below might be oversimplified, but sufficient for now
 type Memory = [Word32]
 
--- | https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lui
-data Instr =    Nop
-            |   Lui     RegIdx Imm          -- ^ x[rd] = sext(imm << 12)
-            |   Auipc   RegIdx Imm          -- ^ x[rd] = pc + sext(imm << 12)
-            |   Addi    RegIdx RegIdx Imm   -- ^ x[rd] = x[rs1] + sext(imm)
-            |   Slti    RegIdx RegIdx Imm   -- ^ 
-            |   Sltiu   RegIdx RegIdx Imm
-            |   Xori    RegIdx RegIdx Imm
-            |   Ori     RegIdx RegIdx Imm
+-- | https://msyksphinz-self.github.io/riscv-isadoc/
+data Instr =    Nop                             -- ^ no operation
+            |   Lui     RegIdx Imm              -- ^ x[rd] = sext(imm << 12)
+            |   Auipc   RegIdx Imm              -- ^ x[rd] = pc + sext(imm << 12)
+            |   Addi    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] + sext(imm)
+            |   Slti    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] < sext(imm)     [SIGNED]
+            |   Sltiu   RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] < sext(imm)     [UNSIGNED]
+            |   Xori    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] ^ sext(imm)
+            |   Ori     RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] | sext(imm)
+            |   Andi    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] & sext(imm)
+            |   Slli    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] << imm          [LOGIC]
+            |   Srli    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] >> imm          [LOGIC]
+            |   Srai    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] >> imm          [ARITH]
+            |   Add     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] + x[rs2]
+            |   Sub     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] - x[rs2]
+            |   Sll     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] << x[rs2]       [LOGIC]
+            |   Slt     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] < x[rs2]        [SIGNED]
+            |   Sltu    RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] < x[rs2]        [UNSIGNED]
+            |   Xor     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] ^ x[rs2]
+            |   Srl     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] >> x[rs2]       [LOGIC]
+            |   Sra     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] >> x[rs2]       [ARITH]
+            |   Or      RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] | x[rs2]
+            |   And     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] & x[rs2]
             deriving Show
             -- insert more instructions here
 
 -- | Hardware thread (hart) with local memory
 data Hart = Hart { 
-    regFile     :: IM.IntMap Register,
+    regFile     :: RegFile,
     pc          :: Register,
     localMem    :: Memory,
     instrMem    :: [Instr]
