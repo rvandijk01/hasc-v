@@ -1,4 +1,4 @@
-module HASCVTypes
+module Types
     -- | Algebraic datatype definitions and their "constructors"
     -- Meant to accomodate the RISC-V spec rather than comply with it
     -- for example, types in Haskell cannot represent 20-bit immediate values for AUIPC etc
@@ -20,7 +20,9 @@ type Prog = [Instr]
 type Memory = [Word32]
 
 -- | https://msyksphinz-self.github.io/riscv-isadoc/
+-- For now, the following (RV32I) instruction types are not supported: fence, csr, privileged, interrupt
 data Instr =    Nop                             -- ^ no operation
+            
             |   Lui     RegIdx Imm              -- ^ x[rd] = sext(imm << 12)
             |   Auipc   RegIdx Imm              -- ^ x[rd] = pc + sext(imm << 12)
             |   Addi    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] + sext(imm)
@@ -32,6 +34,7 @@ data Instr =    Nop                             -- ^ no operation
             |   Slli    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] << imm          [LOGIC]
             |   Srli    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] >> imm          [LOGIC]
             |   Srai    RegIdx RegIdx Imm       -- ^ x[rd] = x[rs1] >> imm          [ARITH]
+            
             |   Add     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] + x[rs2]
             |   Sub     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] - x[rs2]
             |   Sll     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] << x[rs2]       [LOGIC]
@@ -42,6 +45,18 @@ data Instr =    Nop                             -- ^ no operation
             |   Sra     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] >> x[rs2]       [ARITH]
             |   Or      RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] | x[rs2]
             |   And     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] & x[rs2]
+            
+            |   Lb      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][7:0])
+            |   Lh      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][15:0])
+            |   Lw      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][31:0])
+            |   Lbu     RegIdx Imm RegIdx       -- ^ x[rd] = mem[x[rs1] + sext(offset)][7:0]
+            |   Lhu     RegIdx Imm RegIdx       -- ^ x[rd] = mem[x[rs1] + sext(offset)][15:0]
+            |   Sb      RegIdx Imm RegIdx       -- ^ mem[x[rs1] + sext(offset)] = x[rs2][7:0]
+            |   Sh      RegIdx Imm RegIdx       -- ^ mem[x[rs1] + sext(offset)] = x[rs2][15:0]
+            |   Sw      RegIdx Imm RegIdx       -- ^ mem[x[rs1] + sext(offset)] = x[rs2][31:0]
+
+            -- TODO: jump/branch instructions
+
             deriving Show
             -- insert more instructions here
 
