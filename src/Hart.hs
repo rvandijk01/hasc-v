@@ -61,10 +61,10 @@ processInstr hart = (case instr of
     Or rd rs1 rs2   -> hart { regFile = setRegister ((reg rs1) .|. (reg rs2)) rd regf }
     And rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) .&. (reg rs2)) rd regf }
 
-    -- [I] load/store instructions (TODO: fix lh and lw)
-    Lb rd off rs1   -> hart { regFile = setRegister (getbyte $ reg rs1 + sext 12 off) rd regf }
-    Lh rd off rs1   -> hart { regFile = setRegister (gethalf $ reg rs1 + sext 12 off) rd regf }
-    Lw rd off rs1   -> hart { regFile = setRegister (getword $ reg rs1 + sext 12 off) rd regf }
+    -- [I] load/store instructions (TODO: implement lbu-sw)
+    Lb rd off rs1   -> hart { regFile = setRegister (getbytes 1 $ reg rs1 + sext 12 off) rd regf }
+    Lh rd off rs1   -> hart { regFile = setRegister (getbytes 2 $ reg rs1 + sext 12 off) rd regf }
+    Lw rd off rs1   -> hart { regFile = setRegister (getbytes 4 $ reg rs1 + sext 12 off) rd regf }
 
     -- [I] jump/branch instructions (TODO)
 
@@ -75,9 +75,10 @@ processInstr hart = (case instr of
     where
         instr = (instrMem hart) !! (fromEnum $ oldpc)
         reg = (regf IM.!)
-        getword addr = fromIntegral $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 $ (drop (fromIntegral addr) . take 4) $ map fromIntegral lmem
-        gethalf addr = fromIntegral $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 $ (drop (fromIntegral addr) . take 2) $ map fromIntegral lmem
-        getbyte addr = fromIntegral $ lmem !! fromIntegral addr
+        getbytes n addr = fromIntegral 
+                            $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 
+                            $ (drop (fromIntegral addr) . take n) 
+                            $ map fromIntegral lmem
         regf = regFile hart
         lmem = localMem hart
         oldpc = pc hart

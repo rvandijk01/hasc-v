@@ -48,7 +48,7 @@ data Instr =
             |   And     RegIdx RegIdx RegIdx    -- ^ x[rd] = x[rs1] & x[rs2]
             
             -- [I] load/store instructions
-            -- TODO: implement simulation
+            -- TODO: implement lbu-sw
             |   Lb      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][7:0])
             |   Lh      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][15:0])
             |   Lw      RegIdx Imm RegIdx       -- ^ x[rd] = sext(mem[x[rs1] + sext(offset)][31:0])
@@ -59,7 +59,7 @@ data Instr =
             |   Sw      RegIdx Imm RegIdx       -- ^ mem[x[rs1] + sext(offset)] = x[rs2][31:0]
 
             -- [I] jump/branch instructions
-            -- TODO: implement simulation
+            -- TODO: implement all
             |   Jal     RegIdx Imm              -- ^ x[rd] = ++pc; pc += sext(offset)
             |   Jalr    RegIdx RegIdx Imm       -- ^ t = pc+4; pc = (x[rs1]+sext(offset))&∼1; x[rd] = t
             |   Beq     RegIdx RegIdx Imm       -- ^ (x[rs1] == x[rs2]) --> pc += sext(offset)
@@ -70,7 +70,7 @@ data Instr =
             |   Bgeu    RegIdx RegIdx Imm       -- ^ (x[rs1] >= x[rs2]) --> pc += sext(offset)          [UNSIGNED]
 
             -- [M] integer multiplier instructions as defined in the "M" extension
-            -- TODO: implement simulation
+            -- TODO: implement all
             |   Mul     RegIdx RegIdx RegIdx    -- ^ x[rd] = (signed(x[rs1]) * signed(x[rs2]))[31:0]
             |   Mulh    RegIdx RegIdx RegIdx    -- ^ x[rd] = (signed(x[rs1]) * signed(x[rs2]))[63:32]
             |   Mulhsu  RegIdx RegIdx RegIdx    -- ^ x[rd] = (signed(x[rs1]) * unsigned(x[rs2]))[63:32]
