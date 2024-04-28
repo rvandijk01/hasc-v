@@ -4,7 +4,7 @@ where
 
 import Types
 import Data.Bits (shiftR, shiftL, xor, (.|.), (.&.))
-import Data.Word (Word32)
+import Data.Word (Word32, Word8)
 import Data.Int (Int32)
 import qualified Data.IntMap.Strict as IM
 
@@ -32,6 +32,30 @@ shamt = fromIntegral . (zext 5)
 -- x < y ? 1 : 0
 signedcmp :: Word32 -> Word32 -> Word32
 signedcmp x y = if (fromIntegral x :: Int32) < (fromIntegral y :: Int32) then 1 else 0
+
+-- | loads 1-4 bytes starting from specified address -> little endian
+getbytes :: Int     -- ^ Number of bytes to read (1-4)
+         -> Memory  -- ^ Memory bank to read from
+         -> Word32  -- ^ Address of first byte (for now: index in memory array)
+         -> Word32  -- ^ The value read
+getbytes n mem addr = fromIntegral 
+                        $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 
+                        $ (drop (fromIntegral addr) . take n) 
+                        $ map fromIntegral mem
+
+setBytes :: Memory  -- ^ Memory bank to write to
+         -> Word32  -- ^ Address of first byte (for now: index in memory array)
+         -> [Word8] -- ^ Data to write
+         -> Memory  -- ^ New state of the memory bank
+setBytes mem addr wdata = fst ++ wdata ++ lst
+    where
+        fst = take intaddr mem
+        lst = drop (intaddr + length wdata) mem
+        intaddr = (fromIntegral addr) :: Int
+
+-- | Transforms a 32-bit word to an array of bytes for memory
+wordToMemory :: Word32 -> [Word8]
+wordToMemory w = map fromIntegral [shiftR w n | n <- [0, 8, 16, 24]]
 
 -- | Function that steps through the current instruction and returns the new state of the hart
 processInstr :: Hart -> Hart
@@ -61,12 +85,19 @@ processInstr hart = (case instr of
     Or rd rs1 rs2   -> hart { regFile = setRegister ((reg rs1) .|. (reg rs2)) rd regf }
     And rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) .&. (reg rs2)) rd regf }
 
-    -- [I] load/store instructions (TODO: implement lbu-sw)
-    Lb rd off rs1   -> hart { regFile = setRegister (getbytes 1 $ reg rs1 + sext 12 off) rd regf }
-    Lh rd off rs1   -> hart { regFile = setRegister (getbytes 2 $ reg rs1 + sext 12 off) rd regf }
-    Lw rd off rs1   -> hart { regFile = setRegister (getbytes 4 $ reg rs1 + sext 12 off) rd regf }
+    -- [I] load/store instructions
+    Lb rd off rs1   -> hart { regFile = setRegister (sext 8 $ getbytes 1 lmem $ reg rs1 + sext 12 off) rd regf }
+    Lh rd off rs1   -> hart { regFile = setRegister (sext 16 $ getbytes 2 lmem $ reg rs1 + sext 12 off) rd regf }
+    Lw rd off rs1   -> hart { regFile = setRegister (getbytes 4 lmem $ reg rs1 + sext 12 off) rd regf }
+    Lbu rd off rs1  -> hart { regFile = setRegister (getbytes 1 lmem $ reg rs1 + sext 12 off) rd regf }
+    Lhu rd off rs1  -> hart { regFile = setRegister (getbytes 2 lmem $ reg rs1 + sext 12 off) rd regf }
+    Sb rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2 .&. 0xFF)}
+    Sh rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2 .&. 0xFFFF)}
+    Sw rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2)}
 
     -- [I] jump/branch instructions (TODO)
+
+    -- [M] integer HW multiply/divide instructions (TODO)
 
 
     -- catch invalid/unimplemented/nop instructions and skip
@@ -75,18 +106,15 @@ processInstr hart = (case instr of
     where
         instr = (instrMem hart) !! (fromEnum $ oldpc)
         reg = (regf IM.!)
-        getbytes n addr = fromIntegral 
-                            $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 
-                            $ (drop (fromIntegral addr) . take n) 
-                            $ map fromIntegral lmem
         regf = regFile hart
         lmem = localMem hart
         oldpc = pc hart
 
 
 -- for quick testing in ghci
+-- this should be tested much more extensively before saying RV32IM works
 testprog :: Prog
-testprog = [Addi 2 2 10, Addi 2 2 10, Lw 2 0 0]
+testprog = [Addi 2 2 10, Addi 2 2 255, Sw 2 0 0]
 
 testhart :: Hart
 testhart = initHart 10 testprog
