@@ -33,7 +33,6 @@ shamt = fromIntegral . (zext 5)
 signedcmp :: Word32 -> Word32 -> Word32
 signedcmp x y = if (fromIntegral x :: Int32) < (fromIntegral y :: Int32) then 1 else 0
 
-
 -- | Function that steps through the current instruction and returns the new state of the hart
 processInstr :: Hart -> Hart
 processInstr hart = (case instr of    
@@ -62,24 +61,31 @@ processInstr hart = (case instr of
     Or rd rs1 rs2   -> hart { regFile = setRegister ((reg rs1) .|. (reg rs2)) rd regf }
     And rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) .&. (reg rs2)) rd regf }
 
-    -- [I] load/store instructions (TODO)
+    -- [I] load/store instructions (TODO: fix lh and lw)
+    Lb rd off rs1   -> hart { regFile = setRegister (getbyte $ reg rs1 + sext 12 off) rd regf }
+    Lh rd off rs1   -> hart { regFile = setRegister (gethalf $ reg rs1 + sext 12 off) rd regf }
+    Lw rd off rs1   -> hart { regFile = setRegister (getword $ reg rs1 + sext 12 off) rd regf }
 
     -- [I] jump/branch instructions (TODO)
 
-    
+
     -- catch invalid/unimplemented/nop instructions and skip
     _               -> hart
     ) { pc = oldpc + 1 }
     where
         instr = (instrMem hart) !! (fromEnum $ oldpc)
         reg = (regf IM.!)
+        getword addr = fromIntegral $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 $ (drop (fromIntegral addr) . take 4) $ map fromIntegral lmem
+        gethalf addr = fromIntegral $ foldr (\(a :: Word32) b -> (shiftL b 8) + a) 0 $ (drop (fromIntegral addr) . take 2) $ map fromIntegral lmem
+        getbyte addr = fromIntegral $ lmem !! fromIntegral addr
         regf = regFile hart
+        lmem = localMem hart
         oldpc = pc hart
 
 
 -- for quick testing in ghci
 testprog :: Prog
-testprog = [Addi 2 2 10, Addi 2 2 10]
+testprog = [Addi 2 2 10, Addi 2 2 10, Lw 2 0 0]
 
 testhart :: Hart
 testhart = initHart 10 testprog
