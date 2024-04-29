@@ -17,7 +17,7 @@ setRegister val rd regbank = IM.adjust (const val) rd regbank
 sext :: Int -> Word32 -> Word32
 sext n word = fromIntegral sExt
     where
-        sExt = shiftR (shiftL sWord $ 32-n) $ 32-n
+        sExt = sWord `shiftL` (32-n) `shiftR` (32-n)
         sWord = (fromIntegral word) :: Int32
 
 -- | zero-extend first n least significant bits of word
@@ -54,8 +54,8 @@ setBytes mem addr wdata = fst ++ wdata ++ lst
         intaddr = (fromIntegral addr) :: Int
 
 -- | Transforms a 32-bit word to an array of bytes for memory
-wordToMemory :: Word32 -> [Word8]
-wordToMemory w = map fromIntegral [shiftR w n | n <- [0, 8, 16, 24]]
+word2bytes :: Word32 -> [Word8]
+word2bytes w = map fromIntegral [shiftR w n | n <- [0, 8, 16, 24]]
 
 -- | Function that steps through the current instruction and returns the new state of the hart
 processInstr :: Hart -> Hart
@@ -64,7 +64,7 @@ processInstr hart = (case instr of
     Lui rd imm      -> hart { regFile = setRegister (shiftL imm 12) rd regf }
     Auipc rd imm    -> hart { regFile = setRegister (oldpc + (shiftL imm 12)) rd regf }
     Addi rd rs1 imm -> hart { regFile = setRegister ((reg rs1) + imm) rd regf }
-    Slti rd rs1 imm -> hart { regFile = setRegister (signedcmp (reg rs1) (sext 12 imm)) rd regf }
+    Slti rd rs1 imm -> hart { regFile = setRegister (reg rs1 `signedcmp` sext 12 imm) rd regf }
     Sltiu rd rs1 imm-> hart { regFile = setRegister (if (reg rs1) < (sext 12 imm) then 1 else 0) rd regf }
     Xori rd rs1 imm -> hart { regFile = setRegister ((reg rs1) `xor` (sext 12 imm)) rd regf }
     Ori rd rs1 imm  -> hart { regFile = setRegister ((reg rs1) .|. (sext 12 imm)) rd regf }
@@ -77,7 +77,7 @@ processInstr hart = (case instr of
     Add rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) + (reg rs2)) rd regf }
     Sub rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) + (reg rs2)) rd regf }
     Sll rd rs1 rs2  -> hart { regFile = setRegister (shiftL (reg rs1) (shamt $ reg rs2)) rd regf }
-    Slt rd rs1 rs2  -> hart { regFile = setRegister (signedcmp (reg rs1) (reg rs2)) rd regf}
+    Slt rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `signedcmp` reg rs2) rd regf}
     Sltu rd rs1 rs2 -> hart { regFile = setRegister (if (reg rs1) < (reg rs2) then 1 else 0) rd regf }
     Xor rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) `xor` (reg rs2)) rd regf }
     Srl rd rs1 rs2  -> hart { regFile = setRegister (shiftR (reg rs1) (shamt $ reg rs2)) rd regf }
@@ -91,9 +91,9 @@ processInstr hart = (case instr of
     Lw rd off rs1   -> hart { regFile = setRegister (getbytes 4 lmem $ reg rs1 + sext 12 off) rd regf }
     Lbu rd off rs1  -> hart { regFile = setRegister (getbytes 1 lmem $ reg rs1 + sext 12 off) rd regf }
     Lhu rd off rs1  -> hart { regFile = setRegister (getbytes 2 lmem $ reg rs1 + sext 12 off) rd regf }
-    Sb rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2 .&. 0xFF)}
-    Sh rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2 .&. 0xFFFF)}
-    Sw rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (wordToMemory $ reg rs2)}
+    Sb rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 1 $ word2bytes $ reg rs2)}
+    Sh rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 2 $ word2bytes $ reg rs2)}
+    Sw rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 4 $ word2bytes $ reg rs2)}
 
     -- [I] jump/branch instructions (TODO)
 
