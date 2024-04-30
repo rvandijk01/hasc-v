@@ -4,8 +4,8 @@ where
 
 import Types
 import Data.Bits (shiftR, shiftL, xor, (.|.), (.&.))
-import Data.Word (Word32, Word8)
-import Data.Int (Int32)
+import Data.Word (Word64, Word32, Word8)
+import Data.Int (Int64, Int32)
 import qualified Data.IntMap.Strict as IM
 
 -- | Compute next register file state from old register file, dest. register and computed value
@@ -63,6 +63,27 @@ affectsPC (Jal _ _) = True; affectsPC (Jalr _ _ _) = True; affectsPC (Beq _ _ _)
 affectsPC (Bne _ _ _) = True; affectsPC (Blt _ _ _) = True; affectsPC (Bge _ _ _) = True
 affectsPC (Bltu _ _ _) = True; affectsPC (Bgeu _ _ _) = True; affectsPC _ = False
 
+-- | simulation of 32x32 unsigned hardware multiplier
+hwmulu :: Word32 -> Word32 -> Word64
+hwmulu a b = ((fromIntegral a) :: Word64) * ((fromIntegral b) :: Word64)
+
+-- | simulation of 32x32 signed hardware multiplier
+hwmuls :: Word32 -> Word32 -> Word64
+hwmuls a b = fromIntegral $ ((fromIntegral a) :: Int64) * ((fromIntegral b) :: Int64) :: Word64
+
+hwdivu :: Word32 -> Word32 -> Word32
+hwdivu = div
+
+hwdivs :: Word32 -> Word32 -> Word32
+hwdivs a b = fromIntegral $ ((fromIntegral a) :: Int32) `div` ((fromIntegral b) :: Int32)
+
+hwremu :: Word32 -> Word32 -> Word32
+hwremu = mod
+
+hwrems :: Word32 -> Word32 -> Word32
+hwrems a b = fromIntegral $ ((fromIntegral a) :: Int32) `mod` ((fromIntegral b) :: Int32)
+
+
 -- | Function that steps through the current instruction and returns the new state of the hart
 processInstr :: Hart -> Hart
 processInstr hart = case instr of    
@@ -114,8 +135,15 @@ processInstr hart = case instr of
     Bltu rs1 rs2 off-> hart { pc = if reg rs1 < reg rs2 then oldpc + sext 12 off else oldpc }
     Bgeu rs1 rs2 off-> hart { pc = if reg rs1 >= reg rs2 then oldpc + sext 12 off else oldpc }
 
-    -- [M] integer HW multiply/divide instructions (TODO)
-    
+    -- [M] integer HW multiply/divide instructions (Mulhsu unsure)
+    Mul rd rs1 rs2  -> hart { regFile = setRegister (fromIntegral $ (.&.) 0xFFFFFFFF $ reg rs1 `hwmuls` reg rs2) rd regf, pc = oldpc+1 }
+    Mulh rd rs1 rs2 -> hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmuls` reg rs2) `shiftR` 32) rd regf,    pc = oldpc+1 }
+    Mulhsu rd rs1 rs2->hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmulu` reg rs2)) rd regf, pc = oldpc+1 }
+    Mulhu rd rs1 rs2-> hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmulu` reg rs2) `shiftR` 32) rd regf,    pc = oldpc+1 }
+    Div rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `hwdivs` reg rs2) rd regf,                                 pc = oldpc+1 }
+    Divu rd rs1 rs2 -> hart { regFile = setRegister (reg rs1 `hwdivu` reg rs2) rd regf,                                 pc = oldpc+1 }
+    Rem rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `hwrems` reg rs2) rd regf,                                 pc = oldpc+1 }
+    Remu rd rs1 rs2 -> hart { regFile = setRegister (reg rs1 `hwremu` reg rs2) rd regf,                                 pc = oldpc+1 }
 
     -- catch invalid/unimplemented/nop instructions and skip
     _               -> hart
