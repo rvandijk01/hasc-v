@@ -81,6 +81,9 @@ data Instr =
             |   Rem     RegIdx RegIdx RegIdx    -- ^ x[rd] = signed(x[rs1]) % signed(x[rs2])
             |   Remu    RegIdx RegIdx RegIdx    -- ^ x[rd] = unsigned(x[rs1]) % unsigned(x[rs2])
             
+            -- Custom instructions
+            |   Sout    RegIdx                  -- ^ print the number in x[rs1]
+
             -- insert more instructions here
 
             deriving Show
@@ -93,7 +96,8 @@ data Hart = Hart {
     regFile     :: RegFile,
     pc          :: Register,
     localMem    :: Memory,
-    instrMem    :: [Instr]
+    instrMem    :: [Instr],
+    hartid      :: Int
     } deriving Show
 
 -- | CPU with 1 or more harts and shared memory
@@ -105,14 +109,16 @@ data CPU = CPU {
 
 
 -- | Initializes and configures a new hardware thread (hart)
-initHart :: Int     -- ^ Local memory size for this hart
+initHart :: Int     -- ^ Hart id
+         -> Int     -- ^ Local memory size for this hart
          -> [Instr] -- ^ The instruction memory of this hart
          -> Hart    -- ^ The resulting hart structure
-initHart lMemSize prog = Hart { 
+initHart id lMemSize prog = Hart { 
     regFile = IM.fromList [(idx, zeroBits :: Word32) | idx <- [0..31]],
     pc = zeroBits,
     localMem = replicate lMemSize zeroBits,
-    instrMem = prog
+    instrMem = prog,
+    hartid = id
     }
 
 -- | Initializes and configures a new CPU (1 or more harts with shared memory)
@@ -121,6 +127,6 @@ initCPU :: Int      -- ^ Local memory size per hart
         -> [Prog]-- ^ For each given program, a hart will be created to run that program locally
         -> CPU      -- ^ The resulting CPU structure
 initCPU lMemSize shMemSize progs = CPU { 
-    harts = initHart lMemSize <$> progs,
+    harts = initHart <$> [0..(length progs)] <*> replicate (length progs) lMemSize <*> progs,
     sharedMem = replicate shMemSize zeroBits
     }

@@ -7,6 +7,7 @@ import Data.Bits (shiftR, shiftL, xor, (.|.), (.&.))
 import Data.Word (Word64, Word32, Word8)
 import Data.Int (Int64, Int32)
 import qualified Data.IntMap.Strict as IM
+import Debug.Trace (trace)
 
 -- | Compute next register file state from old register file, dest. register and computed value
 setRegister :: Register -> RegIdx -> RegFile -> RegFile
@@ -128,12 +129,12 @@ processInstr hart = case instr of
                               pc = oldpc + sext 20 off }     -- -1 from pc to account for pc+1 at the end
     Jalr rd rs1 off -> hart { regFile = setRegister (oldpc + 1) rd regf,
                               pc = oldpc + reg rs1 + sext 12 off }
-    Beq rs1 rs2 off -> hart { pc = if reg rs1 == reg rs2 then oldpc + sext 12 off else oldpc }
-    Bne rs1 rs2 off -> hart { pc = if reg rs1 /= reg rs2 then oldpc + sext 12 off else oldpc }
-    Blt rs1 rs2 off -> hart { pc = if reg rs1 `signedcmp` reg rs2 /= 0 then oldpc + sext 12 off else oldpc }
-    Bge rs1 rs2 off -> hart { pc = if reg rs1 `signedcmp` reg rs2 == 0 then oldpc + sext 12 off else oldpc }
-    Bltu rs1 rs2 off-> hart { pc = if reg rs1 < reg rs2 then oldpc + sext 12 off else oldpc }
-    Bgeu rs1 rs2 off-> hart { pc = if reg rs1 >= reg rs2 then oldpc + sext 12 off else oldpc }
+    Beq rs1 rs2 off -> hart { pc = if reg rs1 == reg rs2 then oldpc + sext 12 off else oldpc+1 }
+    Bne rs1 rs2 off -> hart { pc = if reg rs1 /= reg rs2 then oldpc + sext 12 off else oldpc+1 }
+    Blt rs1 rs2 off -> hart { pc = if reg rs1 `signedcmp` reg rs2 /= 0 then oldpc + sext 12 off else oldpc+1 }
+    Bge rs1 rs2 off -> hart { pc = if reg rs1 `signedcmp` reg rs2 == 0 then oldpc + sext 12 off else oldpc+1 }
+    Bltu rs1 rs2 off-> hart { pc = if reg rs1 < reg rs2 then oldpc + sext 12 off else oldpc+1 }
+    Bgeu rs1 rs2 off-> hart { pc = if reg rs1 >= reg rs2 then oldpc + sext 12 off else oldpc+1 }
 
     -- [M] integer HW multiply/divide instructions (Mulhsu unsure)
     Mul rd rs1 rs2  -> hart { regFile = setRegister (fromIntegral $ (.&.) 0xFFFFFFFF $ reg rs1 `hwmuls` reg rs2) rd regf, pc = oldpc+1 }
@@ -145,6 +146,9 @@ processInstr hart = case instr of
     Rem rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `hwrems` reg rs2) rd regf,                                 pc = oldpc+1 }
     Remu rd rs1 rs2 -> hart { regFile = setRegister (reg rs1 `hwremu` reg rs2) rd regf,                                 pc = oldpc+1 }
 
+    -- Custom instructions
+    Sout rs1        -> trace ((++) ("Hart " ++ (show $ hartid hart) ++ " says: ") $ show $ reg rs1) $ hart {            pc = oldpc+1 }
+
     -- catch invalid/unimplemented/nop instructions and skip
     _               -> hart
     where
@@ -153,15 +157,3 @@ processInstr hart = case instr of
         regf = regFile hart
         lmem = localMem hart
         oldpc = pc hart
-
-
--- for quick testing in ghci
--- this should be tested much more extensively before saying RV32IM works
-testprog :: Prog
-testprog = [Addi 2 2 10, Addi 2 2 255, Sw 2 0 0, Jal 5 (fromIntegral $ -3)]
-
-testhart :: Hart
-testhart = initHart 10 testprog
-
-runN :: Int -> Hart -> Hart
-runN n = foldr (.) id $ replicate n processInstr
