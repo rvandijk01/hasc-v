@@ -58,12 +58,6 @@ setBytes mem addr wdata = fst ++ wdata ++ lst
 word2bytes :: Word32 -> [Word8]
 word2bytes w = map fromIntegral [shiftR w n | n <- [0, 8, 16, 24]]
 
--- | Does the instruction affect the PC?
-affectsPC :: Instr -> Bool
-affectsPC (Jal _ _) = True; affectsPC (Jalr _ _ _) = True; affectsPC (Beq _ _ _) = True
-affectsPC (Bne _ _ _) = True; affectsPC (Blt _ _ _) = True; affectsPC (Bge _ _ _) = True
-affectsPC (Bltu _ _ _) = True; affectsPC (Bgeu _ _ _) = True; affectsPC _ = False
-
 -- | simulation of 32x32 unsigned hardware multiplier
 hwmulu :: Word32 -> Word32 -> Word64
 hwmulu a b = ((fromIntegral a) :: Word64) * ((fromIntegral b) :: Word64)
@@ -152,9 +146,9 @@ processInstr hart = case instr of
     -- catch invalid/unimplemented/nop instructions and skip
     _               -> hart
     where
-        instr = (instrMem hart) !! (fromEnum $ oldpc)
-        reg = (regf IM.!)
-        set rd val = setRegister val rd regf
-        regf = regFile hart
+        -- if the pc moves past the instruction memory, do nops
+        instr = if (fromEnum oldpc) >= length (instrMem hart) then Nop else (instrMem hart) !! (fromEnum oldpc)
+        reg = (IM.!) $ regFile hart
+        set rd val = setRegister val rd $ regFile hart
         lmem = localMem hart
         oldpc = pc hart
