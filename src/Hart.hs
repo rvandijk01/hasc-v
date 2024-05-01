@@ -89,45 +89,45 @@ hwrems a b = fromIntegral $ ((fromIntegral a) :: Int32) `mod` ((fromIntegral b) 
 processInstr :: Hart -> Hart
 processInstr hart = case instr of    
     -- [I] immediate instructions
-    Lui rd imm      -> hart { regFile = setRegister (shiftL imm 12) rd regf,                                            pc = oldpc+1 }
-    Auipc rd imm    -> hart { regFile = setRegister (oldpc + (shiftL imm 12)) rd regf,                                  pc = oldpc+1 }
-    Addi rd rs1 imm -> hart { regFile = setRegister ((reg rs1) + imm) rd regf,                                          pc = oldpc+1 }
-    Slti rd rs1 imm -> hart { regFile = setRegister (reg rs1 `signedcmp` sext 12 imm) rd regf,                          pc = oldpc+1 }
-    Sltiu rd rs1 imm-> hart { regFile = setRegister (if (reg rs1) < (sext 12 imm) then 1 else 0) rd regf,               pc = oldpc+1 }
-    Xori rd rs1 imm -> hart { regFile = setRegister ((reg rs1) `xor` (sext 12 imm)) rd regf,                            pc = oldpc+1 }
-    Ori rd rs1 imm  -> hart { regFile = setRegister ((reg rs1) .|. (sext 12 imm)) rd regf,                              pc = oldpc+1 }
-    Andi rd rs1 imm -> hart { regFile = setRegister ((reg rs1) .&. (sext 12 imm)) rd regf,                              pc = oldpc+1 }
-    Slli rd rs1 imm -> hart { regFile = setRegister (shiftL (reg rs1) (shamt imm)) rd regf,                             pc = oldpc+1 }
-    Srli rd rs1 imm -> hart { regFile = setRegister (shiftR (reg rs1) (shamt imm)) rd regf,                             pc = oldpc+1 }
-    Srai rd rs1 imm -> hart { regFile = setRegister (sext (32 - (shamt imm)) $ shiftR (reg rs1) (shamt imm)) rd regf,   pc = oldpc+1 }
+    Lui rd imm      -> hart { regFile = set rd $ imm `shiftL` 12,                                               pc = oldpc+1 }
+    Auipc rd imm    -> hart { regFile = set rd $ oldpc + (imm `shiftL` 12),                                     pc = oldpc+1 }
+    Addi rd rs1 imm -> hart { regFile = set rd $ (reg rs1) + imm,                                               pc = oldpc+1 }
+    Slti rd rs1 imm -> hart { regFile = set rd $ reg rs1 `signedcmp` sext 12 imm,                               pc = oldpc+1 }
+    Sltiu rd rs1 imm-> hart { regFile = set rd $ if (reg rs1) < (sext 12 imm) then 1 else 0,                    pc = oldpc+1 }
+    Xori rd rs1 imm -> hart { regFile = set rd $ (reg rs1) `xor` (sext 12 imm),                                 pc = oldpc+1 }
+    Ori rd rs1 imm  -> hart { regFile = set rd $ (reg rs1) .|. (sext 12 imm),                                   pc = oldpc+1 }
+    Andi rd rs1 imm -> hart { regFile = set rd $ (reg rs1) .&. (sext 12 imm),                                   pc = oldpc+1 }
+    Slli rd rs1 imm -> hart { regFile = set rd $ (reg rs1) `shiftL` (shamt imm),                                pc = oldpc+1 }
+    Srli rd rs1 imm -> hart { regFile = set rd $ (reg rs1) `shiftR` (shamt imm),                                pc = oldpc+1 }
+    Srai rd rs1 imm -> hart { regFile = set rd $ sext (32 - shamt imm) $ (reg rs1) `shiftR` shamt imm,          pc = oldpc+1 }
     
     -- [I] non-immediate instructions
-    Add rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) + (reg rs2)) rd regf,                                    pc = oldpc+1 }
-    Sub rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) + (reg rs2)) rd regf,                                    pc = oldpc+1 }
-    Sll rd rs1 rs2  -> hart { regFile = setRegister (shiftL (reg rs1) (shamt $ reg rs2)) rd regf,                       pc = oldpc+1 }
-    Slt rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `signedcmp` reg rs2) rd regf,                              pc = oldpc+1 }
-    Sltu rd rs1 rs2 -> hart { regFile = setRegister (if (reg rs1) < (reg rs2) then 1 else 0) rd regf,                   pc = oldpc+1 }
-    Xor rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) `xor` (reg rs2)) rd regf,                                pc = oldpc+1 }
-    Srl rd rs1 rs2  -> hart { regFile = setRegister (shiftR (reg rs1) (shamt $ reg rs2)) rd regf,                       pc = oldpc+1 }
-    Sra rd rs1 rs2  -> hart { regFile = setRegister (sext (32 - (shamt $ reg rs2)) $ shiftR (reg rs1) (shamt $ reg rs2)) rd regf, pc = oldpc+1 }
-    Or rd rs1 rs2   -> hart { regFile = setRegister ((reg rs1) .|. (reg rs2)) rd regf,                                  pc = oldpc+1 }
-    And rd rs1 rs2  -> hart { regFile = setRegister ((reg rs1) .&. (reg rs2)) rd regf,                                  pc = oldpc+1 }
+    Add rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 + reg rs2,                                             pc = oldpc+1 }
+    Sub rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 + reg rs2,                                             pc = oldpc+1 }
+    Sll rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `shiftL` (shamt $ reg rs2),                            pc = oldpc+1 }
+    Slt rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `signedcmp` reg rs2,                                   pc = oldpc+1 }
+    Sltu rd rs1 rs2 -> hart { regFile = set rd $ if (reg rs1) < (reg rs2) then 1 else 0,                        pc = oldpc+1 }
+    Xor rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `xor` reg rs2,                                         pc = oldpc+1 }
+    Srl rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `shiftR` (shamt $ reg rs2),                            pc = oldpc+1 }
+    Sra rd rs1 rs2  -> hart { regFile = set rd $ sext (32 - (shamt $ reg rs2)) $ (reg rs1) `shiftR` (shamt $ reg rs2), pc = oldpc+1 }
+    Or rd rs1 rs2   -> hart { regFile = set rd $ reg rs1 .|. reg rs2,                                           pc = oldpc+1 }
+    And rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 .&. reg rs2,                                           pc = oldpc+1 }
 
     -- [I] load/store instructions
-    Lb rd off rs1   -> hart { regFile = setRegister (sext 8 $ getbytes 1 lmem $ reg rs1 + sext 12 off) rd regf,         pc = oldpc+1 }
-    Lh rd off rs1   -> hart { regFile = setRegister (sext 16 $ getbytes 2 lmem $ reg rs1 + sext 12 off) rd regf,        pc = oldpc+1 }
-    Lw rd off rs1   -> hart { regFile = setRegister (getbytes 4 lmem $ reg rs1 + sext 12 off) rd regf,                  pc = oldpc+1 }
-    Lbu rd off rs1  -> hart { regFile = setRegister (getbytes 1 lmem $ reg rs1 + sext 12 off) rd regf,                  pc = oldpc+1 }
-    Lhu rd off rs1  -> hart { regFile = setRegister (getbytes 2 lmem $ reg rs1 + sext 12 off) rd regf,                  pc = oldpc+1 }
-    Sb rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 1 $ word2bytes $ reg rs2),         pc = oldpc+1 }
-    Sh rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 2 $ word2bytes $ reg rs2),         pc = oldpc+1 }
-    Sw rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 4 $ word2bytes $ reg rs2),         pc = oldpc+1 }
+    Lb rd off rs1   -> hart { regFile = set rd $ sext 8 $ getbytes 1 lmem $ reg rs1 + sext 12 off,              pc = oldpc+1 }
+    Lh rd off rs1   -> hart { regFile = set rd $ sext 16 $ getbytes 2 lmem $ reg rs1 + sext 12 off,             pc = oldpc+1 }
+    Lw rd off rs1   -> hart { regFile = set rd $ getbytes 4 lmem $ reg rs1 + sext 12 off,                       pc = oldpc+1 }
+    Lbu rd off rs1  -> hart { regFile = set rd $ getbytes 1 lmem $ reg rs1 + sext 12 off,                       pc = oldpc+1 }
+    Lhu rd off rs1  -> hart { regFile = set rd $ getbytes 2 lmem $ reg rs1 + sext 12 off,                       pc = oldpc+1 }
+    Sb rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 1 $ word2bytes $ reg rs2), pc = oldpc+1 }
+    Sh rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 2 $ word2bytes $ reg rs2), pc = oldpc+1 }
+    Sw rs2 off rs1  -> hart { localMem = setBytes lmem (reg rs1 + sext 12 off) (take 4 $ word2bytes $ reg rs2), pc = oldpc+1 }
 
     -- [I] jump/branch instructions
     -- Note: proof-of-concept implementation, some details to be worked out, not fully working yet
-    Jal rd off      -> hart { regFile = setRegister (oldpc + 1) rd regf, 
+    Jal rd off      -> hart { regFile = set rd $ oldpc + 1, 
                               pc = oldpc + sext 20 off }     -- -1 from pc to account for pc+1 at the end
-    Jalr rd rs1 off -> hart { regFile = setRegister (oldpc + 1) rd regf,
+    Jalr rd rs1 off -> hart { regFile = set rd $ oldpc + 1,
                               pc = oldpc + reg rs1 + sext 12 off }
     Beq rs1 rs2 off -> hart { pc = if reg rs1 == reg rs2 then oldpc + sext 12 off else oldpc+1 }
     Bne rs1 rs2 off -> hart { pc = if reg rs1 /= reg rs2 then oldpc + sext 12 off else oldpc+1 }
@@ -137,23 +137,24 @@ processInstr hart = case instr of
     Bgeu rs1 rs2 off-> hart { pc = if reg rs1 >= reg rs2 then oldpc + sext 12 off else oldpc+1 }
 
     -- [M] integer HW multiply/divide instructions (Mulhsu unsure)
-    Mul rd rs1 rs2  -> hart { regFile = setRegister (fromIntegral $ (.&.) 0xFFFFFFFF $ reg rs1 `hwmuls` reg rs2) rd regf, pc = oldpc+1 }
-    Mulh rd rs1 rs2 -> hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmuls` reg rs2) `shiftR` 32) rd regf,    pc = oldpc+1 }
-    Mulhsu rd rs1 rs2->hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmulu` reg rs2)) rd regf, pc = oldpc+1 }
-    Mulhu rd rs1 rs2-> hart { regFile = setRegister (fromIntegral $ (reg rs1 `hwmulu` reg rs2) `shiftR` 32) rd regf,    pc = oldpc+1 }
-    Div rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `hwdivs` reg rs2) rd regf,                                 pc = oldpc+1 }
-    Divu rd rs1 rs2 -> hart { regFile = setRegister (reg rs1 `hwdivu` reg rs2) rd regf,                                 pc = oldpc+1 }
-    Rem rd rs1 rs2  -> hart { regFile = setRegister (reg rs1 `hwrems` reg rs2) rd regf,                                 pc = oldpc+1 }
-    Remu rd rs1 rs2 -> hart { regFile = setRegister (reg rs1 `hwremu` reg rs2) rd regf,                                 pc = oldpc+1 }
+    Mul rd rs1 rs2  -> hart { regFile = set rd $ fromIntegral $ (.&.) 0xFFFFFFFF $ reg rs1 `hwmuls` reg rs2,    pc = oldpc+1 }
+    Mulh rd rs1 rs2 -> hart { regFile = set rd $ fromIntegral $ (reg rs1 `hwmuls` reg rs2) `shiftR` 32,         pc = oldpc+1 }
+    Mulhsu rd rs1 rs2->hart { regFile = set rd $ fromIntegral $ reg rs1 `hwmulu` reg rs2,                       pc = oldpc+1 }
+    Mulhu rd rs1 rs2-> hart { regFile = set rd $ fromIntegral $ (reg rs1 `hwmulu` reg rs2) `shiftR` 32,         pc = oldpc+1 }
+    Div rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `hwdivs` reg rs2,                                      pc = oldpc+1 }
+    Divu rd rs1 rs2 -> hart { regFile = set rd $ reg rs1 `hwdivu` reg rs2,                                      pc = oldpc+1 }
+    Rem rd rs1 rs2  -> hart { regFile = set rd $ reg rs1 `hwrems` reg rs2,                                      pc = oldpc+1 }
+    Remu rd rs1 rs2 -> hart { regFile = set rd $ reg rs1 `hwremu` reg rs2,                                      pc = oldpc+1 }
 
     -- Custom instructions
-    Sout rs1        -> trace ((++) ("Hart " ++ (show $ hartid hart) ++ " says: ") $ show $ reg rs1) $ hart {            pc = oldpc+1 }
+    Sout rs1        -> trace ((++) ("Hart " ++ (show $ hartid hart) ++ " says: ") $ show $ reg rs1) $ hart {    pc = oldpc+1 }
 
     -- catch invalid/unimplemented/nop instructions and skip
     _               -> hart
     where
         instr = (instrMem hart) !! (fromEnum $ oldpc)
         reg = (regf IM.!)
+        set rd val = setRegister val rd regf
         regf = regFile hart
         lmem = localMem hart
         oldpc = pc hart
