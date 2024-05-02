@@ -81,7 +81,7 @@ hwrems a b = fromIntegral $ ((fromIntegral a) :: Int32) `mod` ((fromIntegral b) 
 
 -- | Function that steps through the current instruction and returns the new state of the hart
 processInstr :: Hart -> Hart
-processInstr hart = case instr of    
+processInstr hart@Hart { regFile = gpRegs, pc = oldpc, localMem = lmem } = case instr of    
     -- [I] immediate instructions
     Lui rd imm      -> hart { regFile = set rd $ imm `shiftL` 12,                                               pc = oldpc+1 }
     Auipc rd imm    -> hart { regFile = set rd $ oldpc + (imm `shiftL` 12),                                     pc = oldpc+1 }
@@ -148,7 +148,7 @@ processInstr hart = case instr of
     where
         -- if the pc moves past the instruction memory, do nops
         instr = if (fromEnum oldpc) >= length (instrMem hart) then Nop else (instrMem hart) !! (fromEnum oldpc)
-        reg = (IM.!) $ regFile hart
-        set rd val = setRegister val rd $ regFile hart
-        lmem = localMem hart
-        oldpc = pc hart
+        reg = (IM.!) $ gpRegs --regFile hart
+        set rd val = setRegister val rd $ gpRegs --regFile hart
+        --lmem = localMem hart
+        --oldpc = pc hart
